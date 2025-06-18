@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>エネルギーバトラー ONLINE</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1>エネルギーバトラー ONLINE</h1>
+
+<!-- ==== モード選択 ==== -->
+<div id="modeSel">
+  <button id="btnPvE">オフライン (PvE)</button>
+  <button id="btnPvP">オンライン (PvP)</button>
+</div>
+
+<!-- ==== オンライン：部屋操作パネル ==== -->
+<div id="onlinePanel">
+  <div>
+    <button id="btnCreate">部屋を作る</button>　
+    ルーム ID: <span id="roomIdDisp">---</span>
+  </div>
+  <div style="margin-top:6px;">
+    <input id="joinId" type="text" placeholder="ルームID">
+    <button id="btnJoin">参加</button>
+  </div>
+  <div id="onlineMsg" style="margin-top:6px;color:#064;"></div>
+</div>
+
+<!-- ==== 技説明 ==== -->
+<div id="tech">
+ <h3>技説明</h3>
+ <ul>
+  <li><b>溜める(c)</b> … エネルギー +1</li>
+  <li><b>守る(b)</b> … シールド -1 / 攻撃を受ければ EN +1</li>
+  <li><b>攻撃(a)</b> … EN -1 で攻撃。相手が溜め中なら勝利</li>
+  <li><b>かめはめ波(k)</b> … EN -3。命中すれば即勝利。同士討ちは相殺</li>
+ </ul>
+</div>
+
+<!-- ==== ステータス表示 ==== -->
+<div id="panel">
+  <div class="box">
+    <h3>あなた</h3>
+    エネルギー:<span id="pEn">0</span><br>
+    残りシールド:<span id="pSh">5</span>
+  </div>
+  <div class="box">
+    <h3 id="opName">AI</h3>
+    エネルギー:<span id="aEn">0</span><br>
+    残りシールド:<span id="aSh">5</span>
+  </div>
+</div>
+
+<!-- ==== 操作ボタン ==== -->
+<button id="btnC">溜める(c)</button>
+<button id="btnB">守る(b)</button>
+<button id="btnA">攻撃(a)</button>
+<button id="btnK" style="display:none;">かめはめ波(k)</button>
+
+<p id="result"></p>
+<div id="cutin"></div>
+
+<!-- ==== Firebase SDK (互換レイヤ―版) ==== -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+<script src="script.js"></script>
+</body>
+</html>
