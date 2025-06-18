@@ -15,6 +15,8 @@ const db = firebase.database();
 let pEn=0,aEn=0,pSh=5,aSh=5,inputLocked=false,mode="PvE";
 let loseStreak=0;                     // PvE 用
 const traj=[];                        // 1ゲーム内 AI 学習ログ
+let gameLog = [];                     // 対戦ログ用配列
+const moveNameMap = {a:'攻撃',b:'防御',c:'溜め',k:'かめはめ波'}; // 技名マップ
 const qTable=JSON.parse(localStorage.getItem("qTable")||"{}");
 
 /*===== ③ DOM =====*/
@@ -23,7 +25,8 @@ const pEnE=$("pEn"),aEnE=$("aEn"),pShE=$("pSh"),aShE=$("aSh"),
       btnC=$("btnC"),btnB=$("btnB"),btnA=$("btnA"),btnK=$("btnK"),
       cutin=$("cutin"),result=$("result"),
       allBtns=[btnC,btnB,btnA,btnK],
-      btnPvE=$("btnPvE"),btnPvP=$("btnPvP"),onlinePanel=$("onlinePanel"),
+      gameLogListE = $("gameLogList"), // ログ表示用UL要素
+      btnPvE=$("btnPvE"),btnPvP=$("btnPvP"),onlinePanel=$("onlinePanel"), // gameLogListE を適切な位置に移動
       btnCreate=$("btnCreate"),btnJoin=$("btnJoin"),roomIdDisp=$("roomIdDisp"),
       joinId=$("joinId"),onlineMsg=$("onlineMsg"),opName=$("opName");
 
@@ -36,8 +39,25 @@ function showUI(){
 function lock(){inputLocked=true;allBtns.forEach(b=>b.classList.add('disabled'));}
 function unlock(){inputLocked=false;allBtns.forEach(b=>b.classList.remove('disabled'));}
 function flash(txt,cb){lock();cutin.textContent=txt;cutin.style.display='block';
+  // flashが表示される直前にログが更新されるようにする
   setTimeout(()=>{cutin.style.display='none';unlock();cb&&cb();},850);}
 function stateKey(){return `${pEn}_${aEn}`;}
+
+/*===== ログ表示関連 =====*/
+function addLogEntry(playerMoveKey, opponentMoveKey) {
+  const playerAction = moveNameMap[playerMoveKey] || playerMoveKey;
+  const opponentAction = moveNameMap[opponentMoveKey] || opponentMoveKey;
+  gameLog.push({ playerAction, opponentAction });
+  updateGameLogView();
+}
+function updateGameLogView() {
+  gameLogListE.innerHTML = ''; // 既存のログをクリア
+  gameLog.forEach(entry => {
+    const listItem = document.createElement('li');
+    listItem.textContent = `あなた: ${entry.playerAction} vs ${opName.textContent}: ${entry.opponentAction}`;
+    gameLogListE.appendChild(listItem);
+  });
+}
 
 /*===== ⑤ AI (PvE) =====*/
 const acts=['a','b','c'];
@@ -122,17 +142,31 @@ function sendMove(mv){
 
 /*===== ⑧ 判定 =====*/
 function resolve(pm,am){
-  if(pm==='k'&&am==='k'){pEn-=3;aEn-=3;flash('K 同士！EN-3',reset);return true;}
-  if(pm==='k'&&am!=='k'){flash('あなた K 勝利！',reset);return true;}
-  if(am==='k'&&pm!=='k'){flash((mode==='PvE'?'AI':'相手')+' K 勝利！',reset);return true;}
-  if(pm==='a'&&am==='c'){flash('あなた勝利！',reset);return true;}
-  if(pm==='c'&&am==='a'){flash((mode==='PvE'?'AI':'相手')+' 勝利！',reset);return true;}
+  if(pm==='k'&&am==='k'){
+    addLogEntry('k', 'k');
+    pEn-=3;aEn-=3;flash('K 同士！EN-3',reset);return true;
+  }
+  if(pm==='k'&&am!=='k'){
+    addLogEntry('k', am);
+    flash('あなた K 勝利！',reset);return true;
+  }
+  if(am==='k'&&pm!=='k'){
+    addLogEntry(pm, 'k');
+    flash((mode==='PvE'?'AI':'相手')+' K 勝利！',reset);return true;
+  }
+  if(pm==='a'&&am==='c'){
+    addLogEntry('a', 'c');
+    flash('あなた勝利！',reset);return true;
+  }
+  if(pm==='c'&&am==='a'){
+    addLogEntry('c', 'a');
+    flash((mode==='PvE'?'AI':'相手')+' 勝利！',reset);return true;
+  }
   return false;
 }
 
 /*===== ⑨ ターン処理 =====*/
 function processMoves(pMove,aMove,isOnline){
-  /* 資源更新 */
   if(pMove==='c')pEn++; if(aMove==='c')aEn++;
   if(pMove==='a')pEn--; if(aMove==='a')aEn--;
   if(pMove==='k')pEn-=3;if(aMove==='k')aEn-=3;
@@ -140,9 +174,11 @@ function processMoves(pMove,aMove,isOnline){
   if(pMove==='b'&&aMove==='a')pEn++;
   if(aMove==='b'&&pMove==='a')aEn++;
 
+  // resolve で勝敗が決まった場合は、resolve内でログが記録され、ここで早期リターンする
   if(resolve(pMove,aMove)) return;
-  const map={a:'攻撃',b:'防御',c:'溜め',k:'かめはめ波'};
-  flash(`あなた:${map[pMove]}／${mode==='PvE'?'AI':'相手'}:${map[aMove]}`);
+  // resolve で勝敗が決まらなかった場合のみ、ここでログを記録
+  addLogEntry(pMove, aMove);
+  flash(`あなた:${moveNameMap[pMove]}／${mode==='PvE'?'AI':'相手'}:${moveNameMap[aMove]}`);
   showUI();
 }
 
@@ -156,7 +192,10 @@ function turn(mv){
   if(mode==='PvE'){
     const aMove=aiStrategy();
     if(aMove!=='k') traj.push({s:stateKey(),a:aMove});
-    if(resolve(mv,aMove)){if(aMove==='k')loseStreak++;else loseStreak=0; return;}
+    // resolve で勝敗が決まる場合、resolve内でログが記録される
+    if(resolve(mv,aMove)){
+      if(aMove==='k')loseStreak++;else loseStreak=0;
+      return;}
     processMoves(mv,aMove,false);
   }else{
     sendMove(mv);
@@ -166,7 +205,11 @@ function turn(mv){
 
 /*===== ⑩ 便利 =====*/
 function reset(){
-  pEn=aEn=0; pSh=aSh=5; showUI(); result.textContent='';
+  pEn=aEn=0; pSh=aSh=5;
+  gameLog = []; // ログをクリア
+  updateGameLogView(); // ログ表示をクリア
+  showUI(); result.textContent='';
+  traj.length=0; // AI学習ログもリセット
 }
 
 /*===== ⑪ UI ボタン =====*/
