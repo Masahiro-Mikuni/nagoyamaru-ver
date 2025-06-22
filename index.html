@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>エネルギーバトラー ONLINE</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <img id="gameLogo" src="images/gametitle.png" alt="エネルギーバトラー ONLINE">
+
+  <!-- ==== モード選択 ==== -->
+  <div id="modeSel">
+    <button id="btnPvE">AI対戦 (PvE)</button>
+    <button id="btnPvP">オンライン対戦 (PvP)</button>
+    <button id="btnEvE">AI vs AI (EvE)</button>
+  </div>
+
+  <!-- ==== オンライン：部屋操作パネル ==== -->
+  <div id="onlinePanel">
+    <div>
+      <button id="btnCreate">部屋を作る</button>
+      ルーム ID: <span id="roomIdDisp">---</span>
+    </div>
+    <div style="margin-top:6px;">
+      プレイヤー名: <input id="playerName" type="text" placeholder="あなたの名前 (10文字以内)" maxlength="10">
+    </div>
+
+    <div style="margin-top:6px;">
+      <input id="joinId" type="text" placeholder="ルームID">
+      <button id="btnJoin">参加</button>
+    </div>
+    <div id="onlineMsg"></div>
+  </div>
+
+  <!-- ==== 技説明 ==== -->
+  <div id="tech">
+    <h3>技説明</h3>
+    <ul>
+      <li><b>攻撃(a)</b> … エネルギー -1 で攻撃。相手が溜め中なら勝利</li>
+      <li><b>守る(b)</b> … シールド -1 / 攻撃を受ければ エネルギー +1</li>
+      <li><b>溜め(c)</b> … エネルギー +1</li>
+      <li><b>Special attack(S)</b> … エネルギー -3。防御を貫通して攻撃できる。</li>
+    </ul>
+  </div>
+
+  <!-- ==== ステータス表示 ==== -->
+  <div id="panel">
+    <div class="box">
+      <h3 id="p1Name">AI 1</h3>
+      <span class="wins">Wins: <span id="p1Wins">0</span></span>
+      <!-- プレイヤー1キャラクター画像 -->
+      <img id="p1CharacterImage" src="images/robo_normal.png" alt="Player 1 Character">
+      エネルギー:<span id="pEn">0</span><br>
+      残りシールド:<span id="pSh">5</span>
+    </div>
+    <div class="box">
+      <h3 id="p2Name">AI 2</h3>
+      <span class="wins">Wins: <span id="p2Wins">0</span></span>
+      <!-- プレイヤー2キャラクター画像 -->
+      <img id="p2CharacterImage" src="images/robo_normal.png" alt="Player 2 Character" class="flipped">
+      エネルギー:<span id="aEn">0</span><br>
+      残りシールド:<span id="aSh">5</span>
+    </div>
+  </div>
+
+  <!-- ==== 行動履歴ログ ==== -->
+  <div id="actionLogContainer">
+    <h3>行動履歴</h3>
+    <div id="turnHistoryLog">
+      <!-- ターンごとの行動がここに表示されます -->
+    </div>
+  </div>
+
+  <!-- ==== 操作ボタン ==== -->
+  <button id="btnA" class="action-button action-button-attack">攻撃(a)</button>
+  <button id="btnB" class="action-button action-button-defend">守る(b)</button>
+  <button id="btnC" class="action-button action-button-charge">溜める(c)</button>
+  <button id="btnS" style="display:none;">Special attack(S)</button>
+
+  <p id="result"></p>
+  <div id="cutin"></div>
+
+  <!-- ==== Firebase SDK (互換レイヤ―版) ==== -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <!-- TensorFlow.js ライブラリ -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+
+  <!-- 音声ファイル用のaudioタグ (bodyの閉じタグの直前などが推奨) -->
+  <audio id="soundTameru" src="audio/tameru.mp3" preload="auto"></audio>
+  <audio id="soundAttack" src="audio/attack.mp3" preload="auto"></audio>
+  <audio id="soundGuard" src="audio/guard.mp3" preload="auto"></audio>
+  <audio id="soundKamehameha" src="audio/kamehameha.mp3" preload="auto"></audio>
+  <audio id="soundPushbutton" src="audio/pushbutton.mp3" preload="auto"></audio>
+  <audio id="soundGameend" src="audio/gameend.mp3" preload="auto"></audio>
+
+  <script src="script.js"></script>
+</body>
+
+</html>

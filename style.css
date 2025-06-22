@@ -1,0 +1,375 @@
+    body {
+        font-family: 'Arial', sans-serif;
+        text-align: center;
+        background-color: #121212; /* ダークな背景 */
+        color: #f0f0f0;
+        margin: 0;
+        padding: 30px 20px;
+    }
+
+    #gameLogo {
+        max-width: 90%;
+        max-width: 500px; /* ロゴが大きくなりすぎないように最大幅も指定 */
+        height: auto;
+        margin-bottom: 25px;
+        /* 元のh1のネオンシャドウを画像に適用 */
+        filter: drop-shadow(0 0 10px rgba(100, 255, 218, 0.7));
+    }
+
+    h3 {
+        color: #64ffda;
+        border-bottom: 2px solid #424242; /* より暗いボーダー */
+        padding-bottom: 8px;
+        margin-bottom: 15px;
+    }
+
+    button {
+        margin: 8px;
+        padding: 12px 28px;
+        font-size: 1.1em;
+        cursor: pointer;
+        border: none;
+        border-radius: 8px;
+        color: #fff;
+        background-color: #303030; /* 少し明るいダークグレー */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+        transition: all 0.3s ease;
+        outline: none;
+        position: relative; /* ネオンエフェクト用 */
+        overflow: hidden; /* ネオンエフェクト用 */
+    }
+
+    button::before { /* ホバー時のネオンボーダー */
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border: 2px solid transparent;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        pointer-events: none;
+    }
+
+    button:hover {
+        background-color: #424242;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+    }
+    
+    button:hover::before {
+        border-color: #64ffda; /* デフォルトボタンのネオンカラー */
+        box-shadow: 0 0 15px #64ffda;
+    }
+
+    button:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    }
+
+
+
+    /* ==== 操作ボタンの個別色 ==== */
+    /* 攻撃ボタン (btnA) */
+    button#btnA:hover::before {
+        border-color: #ff1744;
+        box-shadow: 0 0 15px #ff1744;
+    }
+    /* 防御ボタン (btnB) */
+    button#btnB.action-button-defend:hover::before {
+        border-color: #2980B9; /* 青系のホバーネオン */
+        box-shadow: 0 0 15px #2980B9;
+    }
+    button#btnC.action-button-charge:hover::before {
+        border-color: #b8ca16; /* 緑系のホバーネオン */
+        box-shadow: 0 0 15px #b8ca16;
+    }
+
+    button#btnS {
+        background-color: #1e88e5; /* 青 */
+    }
+    button#btnS:hover::before {
+        border-color: #2196F3;
+        box-shadow: 0 0 15px #2196F3;
+    }
+
+    #panel {
+        display: flex;
+        justify-content: center;
+        gap: 30px;
+        margin: 30px auto;
+        max-width: 800px;
+        flex-wrap: wrap;
+    }
+
+    .box {
+        background: #212121; /* より暗いグレー */
+        padding: 25px 40px;
+        border: 1px solid #424242;
+        border-radius: 15px;
+        /* min-width: 250px; */ /* 重複定義のためコメントアウト */
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        flex: 1;
+        position: relative; /* 子要素の絶対配置の基準とする */
+        overflow: hidden; /* 画像がはみ出さないように */
+    }
+
+    .box span {
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #64ffda;
+        display: inline-block;
+        margin-top: 5px;
+        text-shadow: 0 0 8px rgba(100, 255, 218, 0.5);
+    }
+
+    .box .wins {
+        font-size: 1.2em;
+        color: #ffca28; /* 黄色 */
+        font-weight: bold;
+        margin-top: 10px;
+        display: block;
+        text-shadow: 0 0 5px rgba(255, 202, 40, 0.5);
+    }
+
+    /* 勝利数表示のスタイル (既存の .box .wins と重複するが、明示的に定義) */
+    .box span.wins { /* winsクラスを持つspan要素に限定 */
+        font-size: 1.0em; /* 少し小さめに調整 */
+        color: #ffeb3b; /* 明るい黄色 */
+        font-weight: bold;
+        display: block; /* 改行して表示 */
+        margin-bottom: 8px; /* エネルギー表示との間隔 */
+        text-shadow: 0 0 6px rgba(255, 235, 59, 0.6);
+    }
+
+    .box img {
+        display: block;
+        margin: 15px auto;
+        max-width: 150px;
+        height: 150px;
+        object-fit: contain;
+        border-radius: 8px;
+        transition: transform 0.2s ease-in-out;
+    }
+
+    #cutin {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    background: rgba(0, 0, 0, 0.95); /* 半透明の黒 */
+    padding: 35px 60px;
+    font-size: 3.2em;
+    font-weight: bolder;
+    color: #ff1744; /* 強調された赤（通常勝利用）*/
+    border-radius: 18px;
+    box-shadow: 
+        0 0 15px rgba(255, 23, 68, 0.8), /* 通常勝利のネオンシャドウ */
+        0 0 30px rgba(255, 23, 68, 0.5);
+    z-index: 1000;
+    animation: cutin-appear 0.4s ease-out forwards;
+    text-shadow: 2px 2px 10px rgba(255, 23, 68, 0.5);
+    border: 1px solid #ff1744; /* 通常勝利のボーダー */
+}
+    #cutin.match-winner-cutin {
+        background: rgba(255, 215, 0, 0.9); /* 金色系の背景 */
+        color: #333; /* 暗めの文字色 */
+        font-size: 3.8em; /* 通常より少し大きく */
+        box-shadow:
+            0 0 20px rgba(255, 215, 0, 0.9),
+            0 0 40px rgba(255, 215, 0, 0.6);
+        text-shadow: 1px 1px 5px rgba(51, 51, 51, 0.4);
+        border: 2px solid #ffd700; /* 金色のボーダー */
+    }
+
+    #moveCutin {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    background: linear-gradient(145deg, #1a1a1a, #0a0a0a); /* 深みのあるグラデーション背景 */
+    color: #00bcd4; /* シアン系の明るいアクセントカラー */
+    padding: 30px 50px;
+    font-size: 2.8em;
+    font-weight: bold;
+    border-radius: 15px;
+    /* 新しいネオンシャドウ: 複数の影を重ねて複雑な光を表現 */
+    box-shadow: 
+        0 0 5px rgba(0, 188, 212, 0.6), /* 中心に明るい光 */
+        0 0 15px rgba(0, 188, 212, 0.4), /* 広がる光 */
+        0 0 30px rgba(0, 188, 212, 0.2); /* ぼんやりとした外側の光 */
+    z-index: 1001;
+    animation: move-cutin-appear 0.3s ease-out forwards;
+    text-shadow: 1px 1px 10px rgba(0, 188, 212, 0.6); /* テキストにもネオンシャドウ */
+    line-height: 1.4;
+    border: 1px solid #00bcd4; /* アクセントカラーの細いボーダー */
+}
+    @keyframes cutin-appear {
+        from {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.8);
+        }
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+    }
+
+    @keyframes move-cutin-appear {
+        from {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+    }
+
+    #result {
+        height: 30px;
+        font-weight: bold;
+        color: #ff5722; /* オレンジ */
+        margin: 15px 0;
+        font-size: 1.2em;
+        text-shadow: 0 0 5px rgba(255, 87, 34, 0.5);
+    }
+
+    #actionLogContainer {
+        margin: 25px auto;
+        max-width: 700px;
+        background: #212121;
+        padding: 15px 25px;
+        border: 1px solid #424242;
+        border-radius: 15px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    #turnHistoryLog {
+        background-color: #1a1a1a; /* Log background */
+        border: 1px solid #303030;
+        border-radius: 8px;
+        padding: 10px;
+        max-height: 150px; /* Adjust as needed */
+        overflow-y: auto;  /* Enable vertical scroll */
+        text-align: left;
+        font-size: 0.9em;
+        line-height: 1.5;
+        color: #cccccc; /* Lighter text for log entries */
+    }
+
+    .disabled {
+        pointer-events: none;
+        opacity: 0.5;
+        filter: grayscale(80%);
+        box-shadow: none;
+        transform: none;
+    }
+    .disabled::before { /* 無効化されたボタンのネオンエフェクトも無効化 */
+        display: none;
+    }
+
+    #tech {
+        margin: 25px auto;
+        max-width: 700px;
+        text-align: left;
+        background: #212121;
+        padding: 20px 30px;
+        border: 1px solid #424242;
+        border-radius: 15px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    #tech ul {
+        list-style: none;
+        padding: 0;
+    }
+
+    #tech li {
+        margin-bottom: 8px;
+        line-height: 1.6;
+    }
+
+    #onlinePanel {
+        display: none;
+        margin: 20px auto;
+        max-width: 500px;
+        background: #212121;
+        padding: 20px;
+        border: 1px solid #424242;
+        border-radius: 15px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    input[type=text] {
+        padding: 8px 12px;
+        width: 180px;
+        border: 1px solid #616161;
+        border-radius: 8px;
+        font-size: 1em;
+        margin-right: 5px;
+        background-color: #303030;
+        color: #fff;
+        outline: none;
+        transition: border-color 0.3s ease;
+    }
+    input[type=text]:focus {
+        border-color: #64ffda;
+        box-shadow: 0 0 8px rgba(100, 255, 218, 0.5);
+    }
+
+    #onlineMsg {
+        margin-top: 10px;
+        color: #64ffda;
+        font-weight: bold;
+        text-shadow: 0 0 5px rgba(139, 195, 74, 0.5);
+    }
+
+    #roomIdDisp {
+        font-weight: bold;
+        color: #64ffda;
+        font-size: 1.1em;
+        text-shadow: 0 0 5px rgba(100, 255, 218, 0.5);
+    }
+
+    /* スマートフォン向け調整 */
+    @media (max-width: 600px) {
+        h1 {
+            font-size: 2em;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            width: calc(50% - 16px);
+            box-sizing: border-box;
+        }
+        #panel, #onlinePanel, #tech {
+            margin: 20px 10px;
+            padding: 15px;
+        }
+        .box {
+            min-width: unset;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        #cutin {
+            font-size: 2.5em;
+            padding: 25px 40px;
+        }
+        #moveCutin {
+            font-size: 2em;
+            padding: 20px 30px;
+        }
+        input[type=text] {
+            width: calc(100% - 120px);
+            margin-bottom: 10px;
+        }
+    }
+
+/* flippedクラスを持つ要素を水平に反転させる */
+.flipped {
+  transform: scaleX(-1);
+}
