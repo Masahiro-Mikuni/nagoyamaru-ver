@@ -45,12 +45,29 @@ const MOVE_BLOCK = 'b';         // 行動: 防御
 const MOVE_ATTACK = 'a';        // 行動: 攻撃
 const MOVE_SPECIAL_ACTION = 's'; // 行動: Special Action (旧かめはめ波)
 
-// キャラクター画像パスの定数
-const IMAGE_PATH_NORMAL = 'images/robo_normal.png';
-const IMAGE_PATH_ATTACK = 'images/robo_attack.png';
-const IMAGE_PATH_GUARD = 'images/robo_guard.png';
-const IMAGE_PATH_CHARGE = 'images/robo_charge.png';
-const IMAGE_PATH_SPECIAL = 'images/robo_special.png';
+// ▼▼▼▼▼ キャラクターデータ定義 (ここから) ▼▼▼▼▼
+const characters = {
+  robo: {
+    name: 'ロボ',
+    image_normal: 'images/robo_normal.png',
+    image_attack: 'images/robo_attack.png',
+    image_guard: 'images/robo_guard.png',
+    image_charge: 'images/robo_charge.png',
+    image_special: 'images/robo_special.png',
+  },
+  hachimaru: {
+    name: 'はち丸',
+    // (注意) 少女用の画像ファイルが `images` フォルダに必要です
+    image_normal: 'images/hachimaru_normal.png',
+    image_attack: 'images/hachimaru_attack.png',
+    image_guard: 'images/hachimaru_guard.png',
+    image_charge: 'images/hachimaru_charge.png',
+    image_special: 'images/hachimaru_special.png',
+  },
+  // 新しいキャラクターはここに追加
+};
+// ▲▲▲▲▲ キャラクターデータ定義 (ここまで) ▲▲▲▲▲
+
 
 // AI Q学習関連の定数
 const AI_ACTIONS_FOR_Q_LEARNING = [MOVE_ATTACK, MOVE_BLOCK, MOVE_CHARGE]; // Q学習対象のアクション
@@ -144,6 +161,8 @@ const aiReflectionLogElement = $("aiReflectionLog"); // AI考察ログ要素
 const playerNameInputElement = $("playerName"); // プレイヤー名入力要素 (New)
 const p1CharacterImageElement = $("p1CharacterImage"); // プレイヤー1キャラクター画像要素
 const p2CharacterImageElement = $("p2CharacterImage"); // プレイヤー2キャラクター画像要素
+const p1CharacterSelect = $('p1CharacterSelect'); // プレイヤー1キャラクター選択要素
+const p2CharacterSelect = $('p2CharacterSelect'); // プレイヤー2キャラクター選択要素
 
 
 /*===== 5. UIヘルパー関数 =====*/
@@ -157,15 +176,15 @@ function showUI(){
     // EvEモード: playerEnergy/Shield は AI1, opponentEnergy/Shield は AI2
     playerEnergyElement.textContent = playerEnergy;   // AI1 Energy (表示はプレイヤー側を流用)
     playerShieldElement.textContent = playerShield;   // AI1 Shield
-    opponentEnergyElement.textContent = opponentEnergy; // AI2 Energy (表示は相手側を流用)
+    opponentEnergyElement.textContent = opponentEnergy; // AI2 Energy
     opponentShieldElement.textContent = opponentShield; // AI2 Shield
-    player1NameDisplayElement.textContent = "AI 1";
+    // player1NameDisplayElement.textContent = "AI 1"; // updateCharacterViewで設定
     player1WinsElement.textContent = player1Wins;
-    player2NameDisplayElement.textContent = "AI 2";
+    // player2NameDisplayElement.textContent = "AI 2"; // updateCharacterViewで設定
     player2WinsElement.textContent = player2Wins;
     allActionButtons.forEach(btn => btn.style.display = 'none'); // プレイヤー操作ボタンを非表示
     specialActionButtonElement.style.display = 'none'; // Special Actionボタンも非表示
-  } else {
+  } else { // PvE, PvP
     if (currentGameMode === GAME_MODE_PVP) {
         player1NameDisplayElement.textContent = myPlayerName;
         player2NameDisplayElement.textContent = opponentPlayerName;
@@ -181,6 +200,28 @@ function showUI(){
     specialActionButtonElement.style.display = playerEnergy >= SPECIAL_ACTION_ENERGY_COST ? 'inline-block' : 'none';
   }
 }
+
+/**
+ * 選択されたキャラクターに応じて、表示（名前と画像）を更新する
+ * @param {string} player - 'p1' または 'p2'
+ * @param {string} characterKey - 'robo', 'hachimaru' などのキャラクターキー
+ */
+function updateCharacterView(player, characterKey) {
+  const characterData = characters[characterKey];
+  if (!characterData) return; // データがない場合は何もしない
+
+  const nameElm = (player === 'p1') ? player1NameDisplayElement : player2NameDisplayElement;
+  const imageElm = (player === 'p1') ? p1CharacterImageElement : p2CharacterImageElement;
+
+  // PvE/EvEモードのAI名はキャラクター名で上書きする
+  if (currentGameMode === GAME_MODE_PVE && player === 'p2') {
+    nameElm.textContent = `${characterData.name} (AI)`;
+  } else if (currentGameMode === GAME_MODE_EVE) {
+    nameElm.textContent = `${characterData.name} (${player === 'p1' ? 'AI 1' : 'AI 2'})`;
+  }
+  imageElm.src = characterData.image_normal; // 画像を更新
+}
+
 /**
  * プレイヤーの行動ボタンを無効化する
  */
@@ -903,24 +944,32 @@ function resolveMoves(playerMove, opponentMove) { // この関数はラウンド
  * @param {string} move - 'a', 'b', 'c', 's' などの行動
  */
 function updateCharacterImage(player, move) {
-    const imageElement = (player === 'p1') ? p1CharacterImageElement : p2CharacterImageElement;
-    let imagePath = IMAGE_PATH_NORMAL;
+    const imageElement = player === 'p1' ? p1CharacterImageElement : p2CharacterImageElement;
+    const selectElement = player === 'p1' ? p1CharacterSelect : p2CharacterSelect;
+    const characterKey = selectElement.value;
+    const characterData = characters[characterKey];
 
+    if (!characterData) return;
+
+    let imagePath;
     switch (move) {
         case MOVE_ATTACK:
-            imagePath = IMAGE_PATH_ATTACK;
+            imagePath = characterData.image_attack;
             break;
         case MOVE_BLOCK:
-            imagePath = IMAGE_PATH_GUARD;
+            imagePath = characterData.image_guard;
             break;
         case MOVE_CHARGE:
-            imagePath = IMAGE_PATH_CHARGE;
+            imagePath = characterData.image_charge;
             break;
         case MOVE_SPECIAL_ACTION:
-            imagePath = IMAGE_PATH_SPECIAL;
+            imagePath = characterData.image_special;
+            break;
+        default:
+            imagePath = characterData.image_normal;
             break;
     }
-    imageElement.src = imagePath;
+    imageElement.src = imagePath || characterData.image_normal; // 画像が未定義なら通常画像に
 }
 /*===== 10. ターン処理 =====*/
 /**
@@ -1100,8 +1149,14 @@ function resetRound() {
   }
 
   // キャラクター画像を通常状態に戻す
-  p1CharacterImageElement.src = IMAGE_PATH_NORMAL;
-  p2CharacterImageElement.src = IMAGE_PATH_NORMAL;
+  const p1CharKey = p1CharacterSelect.value;
+  const p2CharKey = p2CharacterSelect.value;
+  if (characters[p1CharKey]) {
+    p1CharacterImageElement.src = characters[p1CharKey].image_normal;
+  }
+  if (characters[p2CharKey]) {
+    p2CharacterImageElement.src = characters[p2CharKey].image_normal;
+  }
 
   playerEnergy = 0; opponentEnergy = 0;
   playerShield = PLAYER_INITIAL_SHIELD; opponentShield = PLAYER_INITIAL_SHIELD;
@@ -1340,8 +1395,24 @@ createRoomButtonElement.onclick = createRoom;
 // ルーム参加ボタン
 joinRoomButtonElement.onclick = () => joinRoom(joinRoomIdInputElement.value.trim()); // 入力されたIDでルームに参加
 
+// ▼▼▼▼▼ キャラクター選択イベントリスナー (ここから) ▼▼▼▼▼
+p1CharacterSelect.addEventListener('change', (e) => {
+  updateCharacterView('p1', e.target.value);
+});
+p2CharacterSelect.addEventListener('change', (e) => {
+  updateCharacterView('p2', e.target.value);
+});
+// ▲▲▲▲▲ キャラクター選択イベントリスナー (ここまで) ▲▲▲▲▲
+
+
 /*===== 13. 初期化 =====*/
 // ゲーム開始時に一度だけ実行
 initializeQNetwork().then(() => { // TensorFlow.jsモデルを初期化/ロードしてからゲーム開始
     resetMatch(); // ゲームを初期状態にリセットして開始
+});
+
+// ページ読み込み時に初期キャラクターを表示
+document.addEventListener('DOMContentLoaded', () => {
+    updateCharacterView('p1', p1CharacterSelect.value);
+    updateCharacterView('p2', p2CharacterSelect.value);
 });
