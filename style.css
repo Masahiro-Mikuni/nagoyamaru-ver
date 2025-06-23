@@ -335,41 +335,115 @@
         text-shadow: 0 0 5px rgba(100, 255, 218, 0.5);
     }
 
-    /* スマートフォン向け調整 */
-    @media (max-width: 600px) {
-        h1 {
-            font-size: 2em;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 1em;
-            width: calc(50% - 16px);
-            box-sizing: border-box;
-        }
-        #panel, #onlinePanel, #tech {
-            margin: 20px 10px;
-            padding: 15px;
-        }
-        .box {
-            min-width: unset;
-            width: 100%;
-            margin-bottom: 15px;
-        }
-        #cutin {
-            font-size: 2.5em;
-            padding: 25px 40px;
-        }
-        #moveCutin {
-            font-size: 2em;
-            padding: 20px 30px;
-        }
-        input[type=text] {
-            width: calc(100% - 120px);
-            margin-bottom: 10px;
-        }
-    }
+/* ==== 操作ボタンのコンテナ ==== */
+#actionButtonsContainer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px; /* ボタン間の隙間 */
+    margin: 25px auto;
+    max-width: 800px;
+}
 
 /* flippedクラスを持つ要素を水平に反転させる */
 .flipped {
   transform: scaleX(-1);
+}
+
+/* ==== スマートフォン・タブレット向け調整 ==== */
+@media (max-width: 768px) {
+    body {
+        padding: 20px 10px; /* 上下のパディングを少し減らし、左右を狭く */
+    }
+
+    #gameLogo {
+        margin-bottom: 20px;
+    }
+
+    h3 {
+        font-size: 1.2em;
+    }
+
+    /* パネルのレイアウトを縦並びに */
+    #panel {
+        flex-direction: column;
+        gap: 15px;
+        margin: 20px 0; /* 左右のマージンを削除 */
+    }
+
+    .box {
+        min-width: unset;
+        width: 100%;
+            padding: 15px;
+        box-sizing: border-box; /* パディングを幅に含める */
+    }
+
+    .box span {
+        font-size: 1.5em; /* エネルギー/シールド表示のフォントサイズ調整 */
+    }
+
+    .box img {
+        max-width: 120px; /* 画像を少し小さく */
+        height: 120px;
+    }
+
+    /* 操作ボタンのレイアウト */
+    #actionButtonsContainer {
+        gap: 10px;
+    }
+
+    #actionButtonsContainer button {
+        padding: 12px 10px;
+        font-size: 0.9em;
+        width: calc(50% - 10px); /* 2列レイアウト (gapを考慮) */
+        margin: 0; /* 個別のマージンは不要に */
+        box-sizing: border-box;
+    }
+
+    /* カットインのサイズ調整 */
+        #cutin {
+        font-size: 1.8em; /* 画面幅に対して適切なサイズに */
+        padding: 20px 30px;
+        width: 90%;
+        box-sizing: border-box;
+    }
+    #cutin.match-winner-cutin {
+        font-size: 2.2em;
+    }
+
+    #moveCutin {
+        font-size: 1.6em;
+        padding: 15px 25px;
+        width: 90%;
+        box-sizing: border-box;
+    }
+
+    /* オンラインパネルのレイアウト調整 */
+    #onlinePanel {
+        padding: 15px;
+        gap: 15px;
+    }
+
+    #onlinePanel > div {
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+    }
+
+    #onlinePanel input[type=text],
+    #onlinePanel button {
+        width: 100%;
+        margin: 0;
+        box-sizing: border-box;
+    }
+
+    /* 技説明と行動履歴 */
+    #tech, #actionLogContainer {
+        margin: 20px 0;
+        padding: 15px;
+    }
+
+    #tech li {
+        font-size: 0.9em;
+    }
 }

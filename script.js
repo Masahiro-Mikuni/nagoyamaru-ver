@@ -64,7 +64,16 @@ const characters = {
     image_charge: 'images/hachimaru_charge.png',
     image_special: 'images/hachimaru_special.png',
   },
-  // 新しいキャラクターはここに追加
+  // 新しいキャラクター
+    papacat: {
+    name: 'パパねこ',
+    // (注意) 少女用の画像ファイルが `images` フォルダに必要です
+    image_normal: 'images/papacat_normal.png',
+    image_attack: 'images/papacat_attack.png',
+    image_guard: 'images/papacat_guard.png',
+    image_charge: 'images/papacat_charge.png',
+    image_special: 'images/papacat_special.png',
+  },
 };
 // ▲▲▲▲▲ キャラクターデータ定義 (ここまで) ▲▲▲▲▲
 

@@ -56,6 +56,7 @@
         <select id="p1CharacterSelect">
           <option value="robo">ロボ</option>
           <option value="hachimaru">はち丸</option>
+          <option value="papacat">パパねこ</option>
         </select>
       </div>
       <span class="wins">Wins: <span id="p1Wins">0</span></span>
@@ -72,6 +73,7 @@
         <select id="p2CharacterSelect">
           <option value="robo">ロボ</option>
           <option value="hachimaru">はち丸</option>
+          <option value="papacat">パパねこ</option>
         </select>
       </div>
       <span class="wins">Wins: <span id="p2Wins">0</span></span>
@@ -91,11 +93,13 @@
   </div>
 
   <!-- ==== 操作ボタン ==== -->
-  <button id="btnA" class="action-button action-button-attack">攻撃(a)</button>
-  <button id="btnB" class="action-button action-button-defend">守る(b)</button>
-  <button id="btnC" class="action-button action-button-charge">溜める(c)</button>
-  <button id="btnS" style="display:none;">Special attack(S)</button>
-
+  <div id="actionButtonsContainer">
+    <button id="btnA" class="action-button action-button-attack">攻撃(a)</button>
+    <button id="btnB" class="action-button action-button-defend">守る(b)</button>
+    <button id="btnC" class="action-button action-button-charge">溜める(c)</button>
+    <button id="btnS" style="display:none;">Special attack(S)</button>
+  </div>
+  
   <p id="result"></p>
   <div id="cutin"></div>
 
