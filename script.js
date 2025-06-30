@@ -591,6 +591,7 @@ async function updateQNetwork(reward) {
 // PvPモードで使用するFirebase Realtime Database関連の処理
 let currentRoomRef = null; // 現在参加しているFirebaseルームへの参照
 let myPlayerRole = PLAYER_ROLE_P1; // 自分がプレイヤー1かプレイヤー2か
+let isPvpProcessing = false; // PvPでP1が処理中かどうかのロックフラグ
 
 /**
  * 新しいPvPゲームルームを作成する
@@ -653,115 +654,90 @@ function joinRoom(roomId){
 /**
  * Firebaseルームのデータ変更を監視し、ゲーム状態を同期する
  */
-function listenRoom(){
-  currentRoomRef.on('value', snapshot => { // 'value'イベントでルームデータの変更を全て取得
+function listenRoom() {
+  currentRoomRef.on('value', async snapshot => {
     const roomData = snapshot.val();
     if (!roomData) {
-        // ルームデータが存在しない場合はルームが削除されたとみなし、PvPモードを終了
-        if (currentGameMode === GAME_MODE_PVP) {
-            onlineMessageElement.textContent = "ルームが閉じられました。";
-            resetGame(); // ゲーム状態をリセット (PvEモードに戻るなど)
-        }
-        return; // ルームデータが存在しない場合は何もしない (ルームが削除された場合など)
+      if (currentGameMode === GAME_MODE_PVP) {
+        onlineMessageElement.textContent = "ルームが閉じられました。";
+        resetGame();
+      }
+      return;
     }
-
-    // 自分と相手のロールを決定
     const myRoomData = roomData[myPlayerRole];
     const opponentPlayerRole = myPlayerRole === PLAYER_ROLE_P1 ? PLAYER_ROLE_P2 : PLAYER_ROLE_P1;
     const opponentRoomData = roomData[opponentPlayerRole];
 
-    // プレイヤー名の同期 (myPlayerNameは自分の名前、opponentPlayerNameは相手の名前を指すようにする)
+    // プレイヤー名の同期
     if (myRoomData && myRoomData[FIREBASE_KEY_NAME]) myPlayerName = myRoomData[FIREBASE_KEY_NAME];
     if (opponentRoomData && opponentRoomData[FIREBASE_KEY_NAME]) opponentPlayerName = opponentRoomData[FIREBASE_KEY_NAME];
 
-
-    // 自分と相手のデータが存在すれば、ローカルのゲーム状態を更新
+    // ローカル状態反映
     if (myRoomData && opponentRoomData) {
       playerEnergy = myRoomData[FIREBASE_KEY_ENERGY];
       playerShield = myRoomData[FIREBASE_KEY_SHIELD];
       opponentEnergy = opponentRoomData[FIREBASE_KEY_ENERGY];
       opponentShield = opponentRoomData[FIREBASE_KEY_SHIELD];
-
-      // デバッグログ: Firebaseから受信した現在のエネルギーとシールドを表示
-      if (currentGameMode === GAME_MODE_PVP) {
-          console.log(`[DEBUG] Firebase data received via listener:`);
-          console.log(`  My Role (${myPlayerRole}): Energy=${myRoomData[FIREBASE_KEY_ENERGY]}, Shield=${myRoomData[FIREBASE_KEY_SHIELD]}`);
-          console.log(`  Opponent Role (${opponentPlayerRole}): Energy=${opponentRoomData[FIREBASE_KEY_ENERGY]}, Shield=${opponentRoomData[FIREBASE_KEY_SHIELD]}`);
-          // マッチ終了後のリセット値になっているか確認するログ
-          if (player1Wins >= WINS_TO_VICTORY || player2Wins >= WINS_TO_VICTORY) {
-              console.log(`[DEBUG] Match ended. Checking if Firebase data reflects reset values (Energy=0, Shield=${PLAYER_INITIAL_SHIELD}): My Data Reset = ${myRoomData[FIREBASE_KEY_ENERGY] === 0 && myRoomData[FIREBASE_KEY_SHIELD] === PLAYER_INITIAL_SHIELD}, Opponent Data Reset = ${opponentRoomData[FIREBASE_KEY_ENERGY] === 0 && opponentRoomData[FIREBASE_KEY_SHIELD] === PLAYER_INITIAL_SHIELD}`);
-          }
-      }
-      showUI(); // UIを更新
+      showUI();
     }
 
-    // 両プレイヤーが行動を選択済みの場合
-    if (myRoomData && opponentRoomData && myRoomData[FIREBASE_KEY_MOVE] && opponentRoomData[FIREBASE_KEY_MOVE]) {
-      // Firebase上の両プレイヤーの行動データをクリア (次のターンに備える)
-      // 注意: この処理は片方のクライアントのみで行うべき。両方で行うと競合の可能性。
-      //       通常はホスト(P1)が行うか、トランザクションを使う。現状では両クライアントで実行される。
-      //       ここではシンプルに両方からクリアを試みるが、より堅牢な実装が必要な場合がある。
-      currentRoomRef.child(PLAYER_ROLE_P1 + '/' + FIREBASE_KEY_MOVE).set(null);
-      currentRoomRef.child(PLAYER_ROLE_P2 + '/' + FIREBASE_KEY_MOVE).set(null);
-
-      if (currentGameMode === GAME_MODE_PVP) onlineMessageElement.textContent = ''; // メッセージをクリア (flashMessageで行動が表示されるため)
-
-      // 行動を処理し、結果を判定
-      processMoves(myRoomData[FIREBASE_KEY_MOVE], opponentRoomData[FIREBASE_KEY_MOVE], true);
-
-      // 結果 (エネルギー、シールド) をFirebaseに反映
-      // 注意: この更新も両クライアントから行われる可能性がある。
-      //       processMovesの結果をローカルで計算した後、片方のクライアント(例: P1)のみが更新するのが望ましい。
-      const updates = {};
-      if (myPlayerRole === PLAYER_ROLE_P1) { // P1が更新する場合 (実際には両方実行される)
+    // PvP: 両者がmoveを選択済み
+    if (
+      currentGameMode === GAME_MODE_PVP &&
+      myRoomData && opponentRoomData &&
+      myRoomData[FIREBASE_KEY_MOVE] && opponentRoomData[FIREBASE_KEY_MOVE]
+    ) {
+      // P1のみが処理・DB更新を担当
+      if (myPlayerRole === PLAYER_ROLE_P1 && !isPvpProcessing) {
+        isPvpProcessing = true;
+        // 画面アニメーションは両者で同時に実行
+        processMoves(myRoomData[FIREBASE_KEY_MOVE], opponentRoomData[FIREBASE_KEY_MOVE], true);
+        // 結果を計算した後、DBを一括更新（move: nullも含む）
+        const updates = {};
         updates[`${PLAYER_ROLE_P1}/${FIREBASE_KEY_ENERGY}`] = playerEnergy;
         updates[`${PLAYER_ROLE_P1}/${FIREBASE_KEY_SHIELD}`] = playerShield;
-        updates[`${PLAYER_ROLE_P1}/${FIREBASE_KEY_NAME}`] = myPlayerName; // 名前も更新に含める (念のため)
+        updates[`${PLAYER_ROLE_P1}/${FIREBASE_KEY_MOVE}`] = null;
+        updates[`${PLAYER_ROLE_P1}/${FIREBASE_KEY_NAME}`] = myPlayerName;
         updates[`${PLAYER_ROLE_P2}/${FIREBASE_KEY_ENERGY}`] = opponentEnergy;
         updates[`${PLAYER_ROLE_P2}/${FIREBASE_KEY_SHIELD}`] = opponentShield;
-        updates[`${PLAYER_ROLE_P2}/${FIREBASE_KEY_NAME}`] = opponentPlayerName; // 名前も更新に含める (念のため)
-      } else { // P2が更新する場合 (実際には両方実行される)
-        updates[`${PLAYER_ROLE_P2}/${FIREBASE_KEY_ENERGY}`] = playerEnergy; // P2視点での自分のデータ
-        updates[`${PLAYER_ROLE_P2}/${FIREBASE_KEY_SHIELD}`] = playerShield;
-        updates[`${PLAYER_ROLE_P2}/${FIREBASE_KEY_NAME}`] = myPlayerName; // 名前も更新に含める (念のため)
-        updates[`${PLAYER_ROLE_P1}/${FIREBASE_KEY_ENERGY}`] = opponentEnergy;
-        updates[`${PLAYER_ROLE_P1}/${FIREBASE_KEY_SHIELD}`] = opponentShield;
-        updates[`${PLAYER_ROLE_P1}/${FIREBASE_KEY_NAME}`] = opponentPlayerName; // 名前も更新に含める (念のため)
+        updates[`${PLAYER_ROLE_P2}/${FIREBASE_KEY_MOVE}`] = null;
+        updates[`${PLAYER_ROLE_P2}/${FIREBASE_KEY_NAME}`] = opponentPlayerName;
+        await currentRoomRef.update(updates);
+        isPvpProcessing = false;
+      } else if (myPlayerRole === PLAYER_ROLE_P2) {
+        // P2は画面アニメーションのみ実行、DB更新はしない
+        processMoves(myRoomData[FIREBASE_KEY_MOVE], opponentRoomData[FIREBASE_KEY_MOVE], true);
       }
-      currentRoomRef.update(updates); // Firebaseデータを更新
-    } else if (currentGameMode === GAME_MODE_PVP) { // Game continues, moves not yet resolved for both
-      if (myRoomData) { // My data is available in the snapshot
+      // メッセージクリア
+      if (currentGameMode === GAME_MODE_PVP) onlineMessageElement.textContent = '';
+    } else if (currentGameMode === GAME_MODE_PVP) {
+      // どちらかが未入力
+      if (myRoomData) {
         if (myRoomData[FIREBASE_KEY_MOVE]) {
-          // I (current client) have already made a move.
-          // handlePlayerTurn() sets UI_MSG_WAITING_OPPONENT.
-          // No change needed here unless that message was somehow cleared.
-          if (onlineMessageElement.textContent !== `${myPlayerName}さんの手を選択済。相手の選択を待っています…`) { // メッセージも名入りに合わせる
-            // This might occur if P2 joins after P1 moved, and P1's listener re-evaluates.
-            // Or if P1 moved, P2 not joined, P1 should still see "waiting opponent" or "share room ID".
-            // UI_MSG_WAITING_OPPONENT is generally correct if I've moved.
-          }
-        } else { // I (current client) have NOT made a move yet.
+          // 自分は入力済み
+        } else {
           if (!opponentRoomData) {
-            // Opponent is not present in the room data yet.
             if (myPlayerRole === PLAYER_ROLE_P1) {
-              onlineMessageElement.textContent = `${myPlayerName}さん、${UI_MSG_SHARE_ROOM_ID_P1}`; // 名入り
-            } else { // I am P2, opponent (P1) data not yet seen.
-              // joinRoom() set UI_MSG_CHOOSE_ACTION or UI_MSG_ROOM_ID_NOT_FOUND. This is fine.
-              // No specific change here, initial message from joinRoom() persists.
+              onlineMessageElement.textContent = `${myPlayerName}さん、${UI_MSG_SHARE_ROOM_ID_P1}`;
             }
-          } else { // Opponent IS present in the room data.
-            if (!opponentRoomData[FIREBASE_KEY_MOVE] && opponentRoomData[FIREBASE_KEY_NAME]) { // 相手の名前も確認
-              // Opponent is present AND has NOT made a move. (I also haven't moved)
+          } else {
+            if (!opponentRoomData[FIREBASE_KEY_MOVE] && opponentRoomData[FIREBASE_KEY_NAME]) {
               onlineMessageElement.textContent = UI_MSG_MATCH_READY_CHOOSE_ACTION;
-            } else { // Opponent is present AND HAS made a move. (I haven't moved)
-              onlineMessageElement.textContent = UI_MSG_MATCH_READY_CHOOSE_ACTION; // It's my turn.
+            } else {
+              onlineMessageElement.textContent = UI_MSG_MATCH_READY_CHOOSE_ACTION;
             }
           }
         }
-      } // else: myRoomData is not yet available. Initial messages from createRoom/joinRoom should persist.
+      }
+    }
+
+    // --- PvP: 相手キャラクター変更時は右側(p2)に反映 ---
+    if (currentGameMode === GAME_MODE_PVP && opponentRoomData && opponentRoomData.character) {
+      syncOpponentCharacter(opponentRoomData);
     }
   });
 }
+
 /**
  * プレイヤーの行動をFirebaseに送信する
  * @param {string} move プレイヤーが選択した行動
@@ -850,6 +826,8 @@ function resolveMoves(playerMove, opponentMove) { // この関数はラウンド
     // マッチ勝利判定
     if (player1Wins >= WINS_TO_VICTORY) {
       let matchWinMsg = `${p1DisplayName} won the match ${player1Wins} - ${player2Wins}!`;
+
+
       // PvPマッチ終了時のFirebaseリセット処理をコールバックに含める
       // このコールバックが呼ばれるのは flashMessage の表示後。
       // その時点のグローバルな currentRoomRef や myPlayerRole は変わっている可能性があるため、
@@ -1295,7 +1273,7 @@ function generateAiReflectionMessage(p1LastMove, p2LastMove, p1Won) {
   if (!aiReflectionLogElement) return;
   let reflection = "";
 
-  // 考察対象のAI (PvEなら相手AI、EvEならAI1とAI2両方)
+  // 考察対象のAI (PvEなら相手AI、またはEvEならAI1とAI2両方)
   // 今回はシンプルに、PvEの相手AI、またはEvEのAI1の視点での考察を生成
 
   let aiPlayerName = "";
@@ -1407,9 +1385,21 @@ joinRoomButtonElement.onclick = () => joinRoom(joinRoomIdInputElement.value.trim
 // ▼▼▼▼▼ キャラクター選択イベントリスナー (ここから) ▼▼▼▼▼
 p1CharacterSelect.addEventListener('change', (e) => {
   updateCharacterView('p1', e.target.value);
+  // PvP時はFirebaseに反映
+  if (currentGameMode === GAME_MODE_PVP && currentRoomRef && myPlayerRole === PLAYER_ROLE_P1) {
+    const updates = {};
+    updates[`p1/character`] = e.target.value;
+    currentRoomRef.update(updates);
+  }
 });
 p2CharacterSelect.addEventListener('change', (e) => {
   updateCharacterView('p2', e.target.value);
+  // PvP時はFirebaseに反映
+  if (currentGameMode === GAME_MODE_PVP && currentRoomRef && myPlayerRole === PLAYER_ROLE_P2) {
+    const updates = {};
+    updates[`p2/character`] = e.target.value;
+    currentRoomRef.update(updates);
+  }
 });
 // ▲▲▲▲▲ キャラクター選択イベントリスナー (ここまで) ▲▲▲▲▲
 
